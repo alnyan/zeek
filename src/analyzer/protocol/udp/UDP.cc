@@ -62,7 +62,7 @@ void UDP_Analyzer::DeliverPacket(int len, const u_char* data, bool is_orig,
 
 	int chksum = up->uh_sum;
 
-	auto validate_checksum = ! ignore_checksums && caplen >=len;
+	auto validate_checksum = ! current_pkt->l3_checksummed && ! ignore_checksums && caplen >=len;
 	constexpr auto vxlan_len = 8;
 	constexpr auto eth_len = 14;
 
@@ -135,23 +135,20 @@ void UDP_Analyzer::DeliverPacket(int len, const u_char* data, bool is_orig,
 	if ( udp_contents )
 		{
 		auto port_val = val_mgr->GetPort(ntohs(up->uh_dport), TRANSPORT_UDP);
-		Val* result = 0;
 		bool do_udp_contents = false;
 
 		if ( is_orig )
 			{
-			result = udp_content_delivery_ports_orig->Lookup(
-								port_val);
-			if ( udp_content_deliver_all_orig ||
-			     (result && result->AsBool()) )
+			auto result = udp_content_delivery_ports_orig->Lookup(port_val);
+
+			if ( udp_content_deliver_all_orig || (result && result->AsBool()) )
 				do_udp_contents = true;
 			}
 		else
 			{
-			result = udp_content_delivery_ports_resp->Lookup(
-								port_val);
-			if ( udp_content_deliver_all_resp ||
-			     (result && result->AsBool()) )
+			auto result = udp_content_delivery_ports_resp->Lookup(port_val);
+
+			if ( udp_content_deliver_all_resp || (result && result->AsBool()) )
 				do_udp_contents = true;
 			}
 
