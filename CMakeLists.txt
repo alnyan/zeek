@@ -348,6 +348,7 @@ set(zeekdeps ${zeekdeps}
     ${ZLIB_LIBRARY}
     ${JEMALLOC_LIBRARIES}
     ${OPTLIBS}
+    -ltestimony
 )
 
 ########################################################################
