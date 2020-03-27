@@ -19,7 +19,6 @@ TestimonySource::~TestimonySource()
 
 TestimonySource::TestimonySource(const std::string& path, bool is_live)
 	{
-    printf("Create socket!\n");
 	props.path = path;
 	props.is_live = is_live;
     curr_block = NULL;

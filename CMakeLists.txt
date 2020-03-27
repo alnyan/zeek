@@ -348,8 +348,11 @@ set(zeekdeps ${zeekdeps}
     ${ZLIB_LIBRARY}
     ${JEMALLOC_LIBRARIES}
     ${OPTLIBS}
-    -ltestimony
 )
+
+if(ENABLE_TESTIMONY)
+set(zeekdeps ${zeekdeps} -ltestimony)
+endif()
 
 ########################################################################
 ## System Introspection
