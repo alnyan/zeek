@@ -61,7 +61,7 @@ env:
 
   # This is the https endpoint used for benchmarking. It's kept encrypted as a
   # security measure to avoid leaking the host's IP, port, and endpoint name.
-  ZEEK_BENCHMARK_ENDPOINT: ENCRYPTED[05a4cadeae136c54e5cdc2fc8654320e0ad02af40d9e67796d07467a4a1910971403378027caec4fc4e915c8ca64baf3]
+  ZEEK_BENCHMARK_ENDPOINT: ENCRYPTED[2d66412c77d65d06044826ba69dd00b3b26479dc83721309f2882df93bc52f0e9faa8e51e017086f29628baa864c71f8]
 
 # Linux EOL timelines: https://linuxlifecycle.com/
 # Fedora (~13 months): https://fedoraproject.org/wiki/Fedora_Release_Life_Cycle

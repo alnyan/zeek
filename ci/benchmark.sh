@@ -22,4 +22,4 @@ TIMESTAMP=$(date +'%s')
 HMAC_DIGEST=$(echo "/zeek${TIMESTAMP}" | openssl dgst -sha256 -hmac ${ZEEK_BENCHMARK_HMAC_KEY} | awk '{print $2}')
 
 # Make a request to the benchmark host.
-echo curl -X POST -H "Zeek-HMAC: ${HMAC_DIGEST}" -H "Zeek-HMAC-Timestamp: ${TIMESTAMP}" \"${ZEEK_BENCHMARK_ENDPOINT}?branch=${CIRRUS_BRANCH}\&build=${BUILD_URL}\&build_hash=${BUILD_HASH}\"
+curl -X POST -H "Zeek-HMAC: ${HMAC_DIGEST}" -H "Zeek-HMAC-Timestamp: ${TIMESTAMP}" \"${ZEEK_BENCHMARK_ENDPOINT}?branch=${CIRRUS_BRANCH}\&build=${BUILD_URL}\&build_hash=${BUILD_HASH}\"
