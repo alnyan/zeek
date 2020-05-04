@@ -8,6 +8,7 @@ extern "C" {
 #include <testimony.h>
 }
 
+#include <queue>
 #include <sys/types.h> // for u_char
 
 namespace iosource {
@@ -32,14 +33,14 @@ protected:
 
 private:
 	void OpenLive();
-	bool ExtractNextPacketInternal(Packet* pkt);
-    bool FetchNextBlock();
+	//bool ExtractNextPacketInternal(Packet* pkt);
+    //bool FetchNextBlock();
 
     ::testimony td;
     ::testimony_iter td_iter;
-    pkt_timeval curr_timeval;
-    const tpacket3_hdr *curr_packet;
-    const tpacket_block_desc *curr_block;
+    timeval curr_timeval;
+    tpacket3_hdr *curr_packet;
+    std::queue<tpacket3_hdr *> queue;
 
 	Properties props;
 	Stats stats;

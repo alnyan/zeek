@@ -21,7 +21,6 @@ TestimonySource::TestimonySource(const std::string& path, bool is_live)
 	{
 	props.path = path;
 	props.is_live = is_live;
-    curr_block = NULL;
     curr_packet = NULL;
 	}
 
@@ -32,8 +31,8 @@ void TestimonySource::Open()
 
 void TestimonySource::Close()
 	{
-    if ( curr_block )
-        testimony_return_block(td, curr_block);
+    //if ( curr_block )
+    //    testimony_return_block(td, curr_block);
 
     testimony_close(td);
 
@@ -68,85 +67,128 @@ void TestimonySource::OpenLive()
 	Opened(props);
 	}
 
-bool TestimonySource::FetchNextBlock()
-    {
-    int res;
+//bool TestimonySource::FetchNextBlock()
+//    {
+//    int res;
+//
+//    res = testimony_get_block(td, 1000, &curr_block);
+//    if ( res == 0 && ! curr_block )
+//        return true;
+//
+//    if ( res < 0 )
+//        {
+//        Error(fmt("testimony_get_block: %s, %s", testimony_error(td), strerror(-res)));
+//        Close();
+//        return false;
+//        }
+//
+//    testimony_iter_reset(td_iter, curr_block);
+//    return true;
+//    }
 
-    res = testimony_get_block(td, 1000, &curr_block);
-    if ( res == 0 && ! curr_block )
-        return true;
+//bool TestimonySource::ExtractNextPacketInternal(Packet* pkt)
+//	{
+    //int res;
 
-    if ( res < 0 )
-        {
-        Error(fmt("testimony_get_block: %s, %s", testimony_error(td), strerror(-res)));
-        Close();
-        return false;
-        }
+    //if ( curr_block )
+    //    {
+    //    // Obtain next packet from current block
+    //    curr_packet = testimony_iter_next(td_iter);
 
-    testimony_iter_reset(td_iter, curr_block);
-    return true;
-    }
+    //    // If block is exhausted, return it back
+    //    if ( ! curr_packet )
+    //        {
+    //        res = testimony_return_block(td, curr_block);
+    //        curr_block = NULL;
 
-bool TestimonySource::ExtractNextPacketInternal(Packet* pkt)
-	{
-    int res;
+    //        if ( res < 0 )
+    //            {
+    //            Error(fmt("testimony_return_block: %s, %s", testimony_error(td), strerror(-res)));
+    //            Close();
+    //            return false;
+    //            }
+    //        }
+    //    }
 
-    if ( curr_block )
-        {
-        // Obtain next packet from current block
-        curr_packet = testimony_iter_next(td_iter);
+    //// If no block is being processed now, load one
+    //if ( ! curr_block )
+    //    {
+    //    if ( ! FetchNextBlock() )
+    //        {
+    //        return false;
+    //        }
 
-        // If block is exhausted, return it back
-        if ( ! curr_packet )
-            {
-            res = testimony_return_block(td, curr_block);
-            curr_block = NULL;
+    //    // Likely a timeout
+    //    if ( ! curr_block )
+    //        return false;
 
-            if ( res < 0 )
-                {
-                Error(fmt("testimony_return_block: %s, %s", testimony_error(td), strerror(-res)));
-                Close();
-                return false;
-                }
-            }
-        }
+    //    // Try again
+    //    return ExtractNextPacketInternal(pkt);
+    //    }
 
-    // If no block is being processed now, load one
-    if ( ! curr_block )
-        {
-        if ( ! FetchNextBlock() )
-            {
-            return false;
-            }
-
-        // Likely a timeout
-        if ( ! curr_block )
-            return false;
-
-        // Try again
-        return ExtractNextPacketInternal(pkt);
-        }
-
-    const uint8_t *data = testimony_packet_data(curr_packet);
-    curr_timeval.tv_sec = curr_packet->tp_sec;
-    curr_timeval.tv_usec = curr_packet->tp_nsec / 1000;
-
-	pkt->Init(props.link_type, &curr_timeval, curr_packet->tp_snaplen, curr_packet->tp_len, data);
-
-	++stats.received;
-	stats.bytes_received += curr_packet->tp_len;
-
-    return true;
-	}
+//	}
 
 bool TestimonySource::ExtractNextPacket(Packet* pkt)
     {
-    return ExtractNextPacketInternal(pkt);
+    if ( ! queue.empty() )
+        {
+        printf("Get from queue\n");
+        curr_packet = queue.front();
+        queue.pop();
+
+        curr_timeval.tv_sec = curr_packet->tp_sec;
+        curr_timeval.tv_usec = curr_packet->tp_nsec / 1000;
+	    pkt->Init(props.link_type, &curr_timeval, curr_packet->tp_snaplen, curr_packet->tp_len, (const u_char *) curr_packet + curr_packet->tp_mac);
+
+        return true;
+        } else {
+        const tpacket_block_desc *block = NULL;
+        const tpacket3_hdr *packet;
+
+        int res = testimony_get_block(td, 100, &block);
+        if ( res == 0 && !block ) {
+            // Timeout
+            return false;
+        }
+
+        if ( res < 0 )
+            {
+            Error(fmt("testimony_get_block: %s, %s", testimony_error(td), strerror(-res)));
+            Close();
+            return false;
+            }
+
+        int cnt = 0;
+
+        testimony_iter_reset(td_iter, block);
+        while ( (packet = testimony_iter_next(td_iter)) )
+            {
+            // Queue the packet
+            char *data = new char[packet->tp_len + packet->tp_mac];
+            memcpy(data, packet, packet->tp_len + packet->tp_mac);
+            queue.push((tpacket3_hdr *) data);
+
+            ++stats.received;
+            ++cnt;
+            stats.bytes_received += packet->tp_len;
+            }
+
+        testimony_return_block(td, block);
+        printf("Got %u to queue\n", cnt);
+
+        // Try again
+        return ExtractNextPacket(pkt);
+        }
     }
 
 void TestimonySource::DoneWithPacket()
 	{
-	// Nothing to do.
+    if ( curr_packet )
+        {
+        delete curr_packet;
+        curr_packet = NULL;
+        printf("Release packet\n");
+        }
 	}
 
 bool TestimonySource::PrecompileFilter(int index, const std::string& filter)
